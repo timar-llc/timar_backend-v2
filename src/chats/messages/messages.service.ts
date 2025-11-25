@@ -33,6 +33,7 @@ export class MessagesService {
 
   async sendTextMessage(dto: MessageDto, userUuid: string): Promise<Message> {
     const message = this.messageRepository.create({
+      uuid: dto.messageUuid,
       chat: { uuid: dto.chatUuid },
       sender: { uuid: userUuid },
       content: dto.content,
@@ -55,6 +56,7 @@ export class MessagesService {
 
   async sendAudioMessage(dto: MessageDto, userUuid: string): Promise<Message> {
     const message = this.messageRepository.create({
+      uuid: dto.messageUuid,
       chat: { uuid: dto.chatUuid },
       sender: { uuid: userUuid },
       content: dto.content,
@@ -74,22 +76,46 @@ export class MessagesService {
     }
     return savedMessage;
   }
+  async createRespondMessage(
+    dto: MessageDto,
+    userUuid: string,
+  ): Promise<Message> {
+    const message = this.messageRepository.create({
+      uuid: dto.messageUuid,
+      chat: { uuid: dto.chatUuid },
+      sender: { uuid: userUuid },
+      content: dto.content,
+      type: 'offer',
+      metadata: {
+        price: dto.metadata?.price,
+        duration: dto.metadata?.duration,
+      },
+    });
+    return await this.messageRepository.save(message);
+  }
 
   async sendOfferMessage(dto: MessageDto, userUuid: string): Promise<Message> {
     let chat: Chat;
+    if (!dto.chatUuid && !dto.senderUuid) {
+      throw new BadRequestException(
+        'Either chatUuid or senderUuid must be provided',
+      );
+    }
     if (dto.chatUuid) {
       chat = await this.chatsService.findOne(dto.chatUuid);
     } else {
       if (dto.senderUuid === userUuid) {
         throw new BadRequestException('You cannot send an offer to yourself');
       }
-      chat = await this.chatsService.findOrCreate(userUuid, dto.senderUuid);
+      const receiverUuid = dto.senderUuid as string;
+      chat = await this.chatsService.findOrCreate(userUuid, receiverUuid);
     }
     const message = this.messageRepository.create({
+      uuid: dto.messageUuid,
       chat,
       sender: { uuid: userUuid },
       content: dto.content,
-      type: 'offer',
+      type: dto.type ?? 'offer',
       metadata: {
         price: dto.metadata?.price,
         duration: dto.metadata?.duration,
@@ -99,7 +125,7 @@ export class MessagesService {
 
     return saved;
   }
-  async markMessageAsRead(messageUuid: string): Promise<boolean> {
+  async markMessageAsRead(messageUuid: string, timestamp: string): Promise<boolean> {
     const message = await this.messageRepository.findOne({
       where: { uuid: messageUuid },
       relations: ['chat'],
@@ -107,11 +133,11 @@ export class MessagesService {
     if (!message) {
       throw new NotFoundException('Message not found');
     }
-    if (message.readedAt) {
+    if (message.readedAt && message.readedAt.getTime() > new Date(timestamp).getTime()) {
       // already marked as read
       return false;
     }
-    message.readedAt = new Date();
+    message.readedAt = new Date(timestamp);
     await this.messageRepository.save(message);
     return true;
   }

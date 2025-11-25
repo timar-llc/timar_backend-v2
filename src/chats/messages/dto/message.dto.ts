@@ -1,28 +1,42 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
+  ValidateIf,
 } from 'class-validator';
 
 export class MessageDto {
+  @IsOptional()
+  @IsString()
+  messageUuid?: string;
+
   @IsString()
   @IsNotEmpty()
   content: string;
 
+  @IsOptional()
   @IsString()
+  @ValidateIf((dto: MessageDto) => !dto.senderUuid)
   @IsNotEmpty()
-  chatUuid: string;
+  chatUuid?: string;
 
+  @IsOptional()
   @IsString()
+  @ValidateIf((dto: MessageDto) => !dto.chatUuid)
   @IsNotEmpty()
-  senderUuid: string;
+  senderUuid?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  type: 'text' | 'audio' | 'offer';
+  userUuid?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: 'text' | 'audio' | 'offer';
 
   @IsObject()
   @IsOptional()
@@ -30,6 +44,16 @@ export class MessageDto {
     price?: number;
     duration?: number;
   };
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  price?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  duration?: number;
 
   @IsOptional()
   @ApiProperty({ type: 'array', items: { type: 'string', format: 'binary' } })

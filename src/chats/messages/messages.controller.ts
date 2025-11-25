@@ -21,10 +21,26 @@ export class MessagesController {
   @ApiBearerAuth('Bearer')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FilesInterceptor('attachments', 10))
-  async sendOfferMessage(
-    @Body() dto: MessageDto,
-    @CurrentUser() user: User,
-  ) {
-    return this.messagesService.sendOfferMessage(dto, user.uuid);
+  async sendOfferMessage(@Body() dto: MessageDto, @CurrentUser() user: User) {
+    const metadataPrice =
+      dto.metadata?.price ?? (dto.price !== undefined ? dto.price : undefined);
+    const metadataDuration =
+      dto.metadata?.duration ??
+      (dto.duration !== undefined ? dto.duration : undefined);
+
+    const normalizedDto: MessageDto = {
+      ...dto,
+      senderUuid: dto.senderUuid ?? dto.userUuid,
+      type: dto.type ?? 'offer',
+      metadata:
+        metadataPrice !== undefined || metadataDuration !== undefined
+          ? {
+              price: metadataPrice,
+              duration: metadataDuration,
+            }
+          : dto.metadata,
+    };
+
+    return this.messagesService.sendOfferMessage(normalizedDto, user.uuid);
   }
 }

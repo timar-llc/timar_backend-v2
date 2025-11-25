@@ -133,6 +133,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody()
     data: {
       chatUuid: string;
+      messageUuid: string;
       content: string;
       senderUuid: string;
       replyToUuid?: string;
@@ -162,6 +163,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         savedMessage = await this.messagesService.sendOfferMessage(
           {
             chatUuid: data.chatUuid,
+            messageUuid: data.messageUuid,
             senderUuid: userUuid,
             content: data.content,
             metadata: data.metadata,
@@ -173,6 +175,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         savedMessage = await this.messagesService.sendAudioMessage(
           {
             chatUuid: data.chatUuid,
+            messageUuid: data.messageUuid,
             senderUuid: userUuid,
             type: data.type,
             content: data.content,
@@ -184,6 +187,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         savedMessage = await this.messagesService.sendTextMessage(
           {
             chatUuid: data.chatUuid,
+            messageUuid: data.messageUuid,
             senderUuid: userUuid,
             content: data.content,
             type: data.type,
@@ -191,13 +195,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           },
           userUuid,
         );
+        console.log('savedMessage', savedMessage);
       }
 
+      console.log('savedMessage', savedMessage);
       const resultMessage = await this.messagesService.findOne(
         savedMessage.uuid,
       );
       // Отправляем сообщение всем участникам чата
-      this.server.emit('message_received', {
+      this.server.to(`chat_${data.chatUuid}`).emit('message_received', {
         uuid: resultMessage.uuid,
         chatUuid: data.chatUuid,
         content: resultMessage.content,
@@ -246,27 +252,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-
   @SubscribeMessage('message_read')
   async handleMessageRead(
     @MessageBody()
     data: {
-      type: string;
       chatUuid: string;
       messageUuid: string;
+      timestamp: string;
     },
   ) {
+    console.log('data', data);
     try {
       const updated = await this.messagesService.markMessageAsRead(
         data.messageUuid,
+        data.timestamp,
       );
       if (!updated) {
         return; // уже прочитано, не дублируем событие
       }
       // Шлём только в комнату чата, не глобально
-      this.server.to(`chat_${data.chatUuid}`).emit('message_status', {
+      this.server.to(`chat_${data.chatUuid}`).emit('message_read', {
         messageUuid: data.messageUuid,
         status: 'read',
+        chatUuid: data.chatUuid,
         timestamp: new Date().toISOString(),
       });
 

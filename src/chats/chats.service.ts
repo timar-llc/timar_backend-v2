@@ -28,10 +28,10 @@ export class ChatsService {
       where: [{ user1: { uuid: userUuid } }, { user2: { uuid: userUuid } }],
       order: {
         messages: {
-          createdAt: 'DESC',
+          createdAt: 'ASC',
         },
       },
-      relations: ['user1', 'user2', 'messages'],
+      relations: ['user1', 'user2', 'messages', 'messages.sender'],
     });
     return chats.slice(skip, skip + take);
   }
@@ -42,6 +42,7 @@ export class ChatsService {
         { user1: { uuid: user1Uuid }, user2: { uuid: user2Uuid } },
         { user1: { uuid: user2Uuid }, user2: { uuid: user1Uuid } },
       ],
+      relations: ['messages', 'message.sender'],
     });
     if (!chat) {
       chat = this.chatRepository.create({
