@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Chat } from './entities/chat.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ChatParamsDto } from './params/chat.params.dto';
 
@@ -31,7 +31,13 @@ export class ChatsService {
           createdAt: 'ASC',
         },
       },
-      relations: ['user1', 'user2', 'messages', 'messages.sender'],
+      relations: [
+        'user1',
+        'user2',
+        'messages',
+        'messages.sender',
+        'messages.attachments',
+      ],
     });
     return chats.slice(skip, skip + take);
   }
@@ -42,7 +48,7 @@ export class ChatsService {
         { user1: { uuid: user1Uuid }, user2: { uuid: user2Uuid } },
         { user1: { uuid: user2Uuid }, user2: { uuid: user1Uuid } },
       ],
-      relations: ['messages', 'message.sender'],
+      relations: ['messages', 'messages.sender'],
     });
     if (!chat) {
       chat = this.chatRepository.create({
@@ -57,7 +63,13 @@ export class ChatsService {
   async findOne(uuid: string): Promise<Chat> {
     const chat = await this.chatRepository.findOne({
       where: { uuid },
-      relations: ['user1', 'user2', 'messages', 'messages.sender'],
+      relations: [
+        'user1',
+        'user2',
+        'messages',
+        'messages.sender',
+        'messages.attachments',
+      ],
       order: {
         messages: {
           createdAt: 'ASC',
@@ -69,5 +81,17 @@ export class ChatsService {
       throw new NotFoundException('Chat not found');
     }
     return chat;
+  }
+  async findByParticipantsIds(uuids: string[]): Promise<Chat[]> {
+    return await this.chatRepository.find({
+      where: [{ user1: { uuid: In(uuids) } }, { user2: { uuid: In(uuids) } }],
+      relations: [
+        'user1',
+        'user2',
+        'messages',
+        'messages.sender',
+        'messages.attachments',
+      ],
+    });
   }
 }

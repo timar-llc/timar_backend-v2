@@ -1,0 +1,22 @@
+{
+    "confident-start": {
+      "title": "Confident Start",
+      "description": "You have completed your profile 100% and passed verification."
+    },
+    "new-height": {
+      "title": "New Height",
+      "description": "You have completed 10 orders in a row without delays."
+    },
+    "first-order": {
+      "title": "First Order",
+      "description": "You have completed your first order on the TimarLance platform. Congratulations!"
+    },
+    "first-review": {
+      "title": "First Review",
+      "description": "You have received your first review."
+    },
+    "team-player": {
+      "title": "Team Player",
+      "description": "You have received 5 positive reviews in a row."
+    }
+  }

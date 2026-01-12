@@ -26,4 +26,10 @@ export class ChatsController {
   async findOne(@Param('uuid') uuid: string): Promise<Chat> {
     return await this.chatsService.findOne(uuid);
   }
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('Bearer')
+  @Get('participants/:uuids')
+  async findByParticipantsIds(@Param('uuids') uuids: string): Promise<Chat[]> {
+    return await this.chatsService.findByParticipantsIds(uuids.split(','));
+  }
 }

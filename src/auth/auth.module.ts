@@ -10,7 +10,8 @@ import { RedisModule } from 'src/config/redis/redis.module';
 import { MailerModule } from 'src/config/mailer/mailer.module';
 import { UsersModule } from '../users/users.module';
 import { SmsModule } from 'src/config/sms/sms.module';
-
+import { AchievementsModule } from 'src/achievements/achievements.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 @Global()
 @Module({
   imports: [
@@ -25,7 +26,9 @@ import { SmsModule } from 'src/config/sms/sms.module';
     }),
     RedisModule,
     MailerModule,
+    AchievementsModule,
     UsersModule,
+    NotificationsModule,
     SmsModule,
   ],
   controllers: [AuthController],

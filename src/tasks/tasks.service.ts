@@ -121,6 +121,16 @@ export class TasksService {
       qb.andWhere('task.isDraft = :isDraft', { isDraft: isDraftBool });
     }
 
+    // Always add respondes count for all tasks
+    qb.addSelect(
+      (subQb) =>
+        subQb
+          .select('COUNT(r.uuid)')
+          .from('respondes', 'r')
+          .where('r.task_uuid = task.uuid'),
+      'respondes_count',
+    );
+
     if (orderBy === 'createdAtAsc') {
       qb.orderBy('task.createdAt', 'ASC');
     } else if (orderBy === 'createdAtDesc') {
@@ -130,39 +140,78 @@ export class TasksService {
     } else if (orderBy === 'priceDesc') {
       qb.orderBy('task.price', 'DESC');
     } else if (orderBy === 'respondesCountAsc') {
-      // Используем snake_case алиас, чтобы избежать кавычек в ORDER BY
-      qb.addSelect(
-        (subQb) =>
-          subQb
-            .select('COUNT(r.uuid)')
-            .from('respondes', 'r')
-            .where('r.task_uuid = task.uuid'),
-        'respondes_count',
-      ).orderBy('respondes_count', 'ASC');
+      qb.orderBy('respondes_count', 'ASC');
     } else if (orderBy === 'respondesCountDesc') {
-      qb.addSelect(
-        (subQb) =>
-          subQb
-            .select('COUNT(r.uuid)')
-            .from('respondes', 'r')
-            .where('r.task_uuid = task.uuid'),
-        'respondes_count',
-      ).orderBy('respondes_count', 'DESC');
+      qb.orderBy('respondes_count', 'DESC');
     }
 
     if (typeof skip === 'number') qb.skip(skip);
     if (typeof take === 'number') qb.take(take);
 
-    const [tasks, total] = await qb.getManyAndCount();
+    // Create a separate query builder for count
+    const countQb = this.taskRepository
+      .createQueryBuilder('task')
+      .leftJoin('task.category', 'category')
+      .leftJoin('task.user', 'user');
+
+    if (my === true) {
+      countQb.where('task.user_uuid = :userUuid', { userUuid });
+    }
+
+    if (search) {
+      countQb.andWhere('task.title ILIKE :search', { search: `%${search}%` });
+    }
+    if (typeof minPrice === 'number') {
+      countQb.andWhere('task.price >= :minPrice', { minPrice });
+    }
+    if (typeof maxPrice === 'number') {
+      countQb.andWhere('task.price <= :maxPrice', { maxPrice });
+    }
+    if (categorySlugs && categorySlugs.length > 0) {
+      countQb.andWhere('category.slug IN (:...categorySlugs)', {
+        categorySlugs,
+      });
+    } else if (categoryUuid) {
+      countQb.andWhere('task.category_uuid = :categoryUuid', { categoryUuid });
+    }
+    if (complexities && complexities.length > 0) {
+      countQb.andWhere('task.complexity IN (:...complexities)', {
+        complexities,
+      });
+    } else if (complexity) {
+      countQb.andWhere('task.complexity = :complexity', { complexity });
+    }
+    if (isDraft !== undefined) {
+      const isDraftBool =
+        typeof isDraft === 'boolean'
+          ? isDraft
+          : String(isDraft).toLowerCase() === 'true';
+      countQb.andWhere('task.isDraft = :isDraft', { isDraft: isDraftBool });
+    }
+
+    const { entities: tasks, raw: rawResults } = await qb.getRawAndEntities();
+    const total = await countQb.getCount();
     const page = Math.floor(skip / take) + 1;
-    for (const task of tasks) {
+
+    // Map respondes_count from raw results to tasks
+    const tasksWithCounts = tasks.map((task, index) => {
+      const rawResult = rawResults[index];
+      return {
+        ...task,
+        respondesCount: rawResult
+          ? parseInt(rawResult.respondes_count || '0', 10)
+          : 0,
+      };
+    });
+
+    for (const task of tasksWithCounts) {
       task.category = await this.appService.finOneCategory(
         task.category.slug,
         lang,
       );
     }
     return {
-      tasks,
+      tasks: tasksWithCounts,
       total,
       page,
     };
@@ -175,17 +224,43 @@ export class TasksService {
       relations: ['files', 'category', 'user'],
     });
 
+    // Get respondes count using query builder
+    const qb = this.taskRepository
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.files', 'files')
+      .leftJoinAndSelect('task.category', 'category')
+      .leftJoinAndSelect('task.user', 'user')
+      .where('task.uuid = :uuid', { uuid })
+      .addSelect(
+        (subQb) =>
+          subQb
+            .select('COUNT(r.uuid)')
+            .from('respondes', 'r')
+            .where('r.task_uuid = task.uuid'),
+        'respondes_count',
+      );
+
     if (userUuid && task.user && task.user.uuid === userUuid) {
       // Owner: include respondes and respondes.user
-      task = await this.taskRepository.findOneOrFail({
-        where: { uuid },
-        relations: ['files', 'category', 'user', 'respondes', 'respondes.user'],
-      });
+      qb.leftJoinAndSelect('task.respondes', 'respondes').leftJoinAndSelect(
+        'respondes.user',
+        'respondesUser',
+      );
     }
 
+    const { entities, raw } = await qb.getRawAndEntities();
+    const taskWithCount = entities[0];
+    const rawResult = raw[0];
+
     return {
-      ...task,
-      category: await this.appService.finOneCategory(task.category.slug, lang),
+      ...taskWithCount,
+      respondesCount: rawResult
+        ? parseInt(rawResult.respondes_count || '0', 10)
+        : 0,
+      category: await this.appService.finOneCategory(
+        taskWithCount.category.slug,
+        lang,
+      ),
     };
   }
 

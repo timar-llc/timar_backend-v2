@@ -53,8 +53,8 @@ export class Project {
   @OneToMany('ProjectMedia', 'project', { onDelete: 'CASCADE', nullable: true })
   media: ProjectMedia[];
 
-  @Column({ nullable: true })
-  technologies: string;
+  @Column({ nullable: true, type: 'jsonb' })
+  technologies: string[];
 
   @Column({
     type: 'enum',

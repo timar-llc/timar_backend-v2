@@ -1,4 +1,3 @@
-import { PaymentMethod } from 'src/payments/payment-methods/entities/paymentMethod.entity';
 import { User } from 'src/users/entities/user.entity';
 import {
   Column,
@@ -15,24 +14,24 @@ export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   uuid: string;
 
-  @Column()
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
   amount: number;
 
-  @Column({ nullable: true, name: 'currency' })
-  currency: string;
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  amountWithCommission: number;
 
-  @Column({ nullable: true, name: 'crypto_amount' })
-  cryptoAmount: number;
-
-  @Column({ nullable: true, name: 'crypto_currency' })
-  cryptoCurrency: string;
-
-  @Column({ nullable: true, name: 'exchange_rate' })
-  exchangeRate: number;
-
-  @ManyToOne('PaymentMethod', 'transactions')
-  @JoinColumn({ name: 'payment_method_uuid' })
-  paymentMethod: PaymentMethod;
+  @Column({ enum: ['card', 'crypto', 'sbp'], name: 'payment_method' })
+  paymentMethod: string;
 
   @ManyToOne('User', 'transactions')
   @JoinColumn({ name: 'user_uuid' })

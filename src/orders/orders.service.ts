@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { ChatsService } from 'src/chats/chats.service';
 import { MessagesService } from 'src/chats/messages/messages.service';
 import { RespondesService } from 'src/respondes/respondes.service';
 import { UsersService } from 'src/users/users.service';
+import { CreateOrderDto } from './dto/create-order.dto';
 
 @Injectable()
 export class OrdersService {
@@ -32,12 +33,7 @@ export class OrdersService {
     );
     await this.messagesService.createRespondMessage(
       {
-        chatUuid: chat.uuid,
-        respondUuid: respond.uuid,
-        price: respond.price,
-        duration: respond.duration,
-        currency: respond.task.currency,
-        description: respond.coverLetter,
+        content: respond.coverLetter,
       },
       userUuid,
     );
@@ -69,4 +65,34 @@ export class OrdersService {
     }
     return await this.orderRepository.save(order);
   }
+
+  async create(orderDto: CreateOrderDto): Promise<Order> {
+    const order = this.orderRepository.create({
+      client: { uuid: orderDto.clientUuid },
+      freelancer: { uuid: orderDto.freelancerUuid },
+      task: { uuid: orderDto.taskUuid },
+      respond: { uuid: orderDto.respondUuid },
+      price: orderDto.price,
+      duration: orderDto.duration,
+      currency: orderDto.currency,
+      status: orderDto.status,
+    });
+    return await this.orderRepository.save(order);
+  }
+  async findOne(uuid: string): Promise<Order> {
+    return await this.orderRepository.findOneOrFail({
+      where: { uuid },
+      relations: ['client', 'freelancer', 'task'],
+    });
+  }
+  async findAll(userUuid: string): Promise<Order[]> {
+    return await this.orderRepository.find({
+      where: [
+        { client: { uuid: userUuid } },
+        { freelancer: { uuid: userUuid } },
+      ],
+      relations: ['client', 'freelancer', 'task'],
+    });
+  }
+
 }

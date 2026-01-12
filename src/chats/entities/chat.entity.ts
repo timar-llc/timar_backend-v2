@@ -21,9 +21,6 @@ export class Chat {
   @JoinColumn({ name: 'user1_uuid' })
   user1: User;
 
-  //   @ManyToOne('Order', 'chats', { nullable: true })
-  //   order: Order;
-
   @ManyToOne('User', 'chats')
   @JoinColumn({ name: 'user2_uuid' })
   user2: User;

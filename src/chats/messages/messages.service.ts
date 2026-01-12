@@ -11,6 +11,7 @@ import { Chat } from '../entities/chat.entity';
 import { MessageDto } from './dto/message.dto';
 import { MessageAttachement } from './entities/messageAttachement.entity';
 import { StorageService } from 'src/config/s3/s3.service';
+import { Order } from 'src/orders/entities/order.entity';
 
 @Injectable()
 export class MessagesService {
@@ -19,6 +20,8 @@ export class MessagesService {
     private messageRepository: Repository<Message>,
     @InjectRepository(MessageAttachement)
     private messageAttachmentRepository: Repository<MessageAttachement>,
+    @InjectRepository(Order)
+    private orderRepository: Repository<Order>,
     private chatsService: ChatsService,
     private storageService: StorageService,
   ) {}
@@ -96,6 +99,7 @@ export class MessagesService {
 
   async sendOfferMessage(dto: MessageDto, userUuid: string): Promise<Message> {
     let chat: Chat;
+    let receiverUuid: string | undefined;
     if (!dto.chatUuid && !dto.senderUuid) {
       throw new BadRequestException(
         'Either chatUuid or senderUuid must be provided',
@@ -103,13 +107,23 @@ export class MessagesService {
     }
     if (dto.chatUuid) {
       chat = await this.chatsService.findOne(dto.chatUuid);
+      const participantUuids = [chat.user1?.uuid, chat.user2?.uuid];
+      if (!participantUuids.includes(userUuid)) {
+        throw new BadRequestException('You are not a participant of this chat');
+      }
+      receiverUuid =
+        chat.user1?.uuid === userUuid ? chat.user2?.uuid : chat.user1?.uuid;
+      if (!receiverUuid) {
+        throw new BadRequestException('Chat participants are not defined');
+      }
     } else {
       if (dto.senderUuid === userUuid) {
         throw new BadRequestException('You cannot send an offer to yourself');
       }
-      const receiverUuid = dto.senderUuid as string;
+      receiverUuid = dto.senderUuid as string;
       chat = await this.chatsService.findOrCreate(userUuid, receiverUuid);
     }
+    await this.ensureRoleCapacity(userUuid, receiverUuid);
     const message = this.messageRepository.create({
       uuid: dto.messageUuid,
       chat,
@@ -125,7 +139,38 @@ export class MessagesService {
 
     return saved;
   }
-  async markMessageAsRead(messageUuid: string, timestamp: string): Promise<boolean> {
+  private async ensureRoleCapacity(
+    clientUuid: string,
+    freelancerUuid: string,
+  ): Promise<void> {
+    const clientsActiveOrder = await this.orderRepository.findOne({
+      where: {
+        client: { uuid: clientUuid },
+        status: 'active',
+      },
+    });
+    if (clientsActiveOrder) {
+      throw new BadRequestException(
+        'You already have an active order as a client',
+      );
+    }
+
+    const freelancerActiveOrder = await this.orderRepository.findOne({
+      where: {
+        freelancer: { uuid: freelancerUuid },
+        status: 'active',
+      },
+    });
+    if (freelancerActiveOrder) {
+      throw new BadRequestException(
+        'This freelancer already has an active order',
+      );
+    }
+  }
+  async markMessageAsRead(
+    messageUuid: string,
+    timestamp: string,
+  ): Promise<boolean> {
     const message = await this.messageRepository.findOne({
       where: { uuid: messageUuid },
       relations: ['chat'],
@@ -133,7 +178,10 @@ export class MessagesService {
     if (!message) {
       throw new NotFoundException('Message not found');
     }
-    if (message.readedAt && message.readedAt.getTime() > new Date(timestamp).getTime()) {
+    if (
+      message.readedAt &&
+      message.readedAt.getTime() > new Date(timestamp).getTime()
+    ) {
       // already marked as read
       return false;
     }
@@ -151,5 +199,21 @@ export class MessagesService {
       throw new NotFoundException('Message not found');
     }
     return message;
+  }
+
+  async update(
+    uuid: string,
+    updateMessageDto: Partial<Message>,
+  ): Promise<Message> {
+    const message = await this.messageRepository.findOne({
+      where: { uuid },
+    });
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+    return await this.messageRepository.save({
+      ...message,
+      ...updateMessageDto,
+    });
   }
 }

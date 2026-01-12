@@ -70,6 +70,7 @@ export class TasksController {
     return await this.tasksService.update(uuid, updateTaskDto, files);
   }
 
+
   @Delete(':uuid')
   @UseGuards(AuthGuard)
   @ApiBearerAuth('Bearer')

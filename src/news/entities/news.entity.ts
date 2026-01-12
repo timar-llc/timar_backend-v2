@@ -10,6 +10,9 @@ export class News {
   @Column()
   title: string;
 
+  @Column({ nullable: true })
+  slug: string;
+
   @Column()
   description: string;
 

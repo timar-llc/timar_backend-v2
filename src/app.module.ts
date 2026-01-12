@@ -10,7 +10,6 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TypeOrmConfig } from './config/typeorm';
 import { UsersModule } from './users/users.module';
-import { NotificationModule } from './notification/notification.module';
 import { ProjectsModule } from './projects/projects.module';
 import { AcceptLanguageResolver, QueryResolver, I18nModule } from 'nestjs-i18n';
 import * as path from 'path';
@@ -24,12 +23,17 @@ import { ChatsModule } from './chats/chats.module';
 import { NewsModule } from './news/news.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { TransactionsModule } from './payments/transactions/transactions.module';
-import { PaymentMethodsModule } from './payments/payment-methods/payment-methods.module';
-import { PayoutRequestsModule } from './payments/payout-requests/payout-requests.module';
 import { Category } from './common/entities/category.entity';
+import { AchievementsModule } from './achievements/achievements.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { YookassaModule } from './payments/yookassa/yookassa.module';
+import { HeleketModule } from './payments/heleket/heleket.module';
+import { PaymentsModule } from './payments/payments.module';
+import { WebSocketModule } from './common/services/websocket.module';
 
 @Module({
   imports: [
+    WebSocketModule,
     LoggerModule,
     AuthModule,
     ConfigModule.forRoot({
@@ -48,7 +52,6 @@ import { Category } from './common/entities/category.entity';
       resolvers: [new QueryResolver(['lang']), AcceptLanguageResolver],
     }),
     UsersModule,
-    NotificationModule,
     ProjectsModule,
     TypeOrmModule.forFeature([Country, Category]),
     CacheModule.register(),
@@ -60,8 +63,11 @@ import { Category } from './common/entities/category.entity';
     NewsModule,
     ReviewsModule,
     TransactionsModule,
-    PaymentMethodsModule,
-    PayoutRequestsModule,
+    AchievementsModule,
+    NotificationsModule,
+    YookassaModule,
+    HeleketModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [

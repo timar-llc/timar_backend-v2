@@ -5,6 +5,7 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
@@ -14,8 +15,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ChatsService } from './chats.service';
 import { MessagesService } from './messages/messages.service';
 import { User } from 'src/users/entities/user.entity';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { OrdersService } from 'src/orders/orders.service';
+import { Message } from './messages/entities/message.entity';
+import { WebSocketService } from 'src/common/services/websocket.service';
 
 @WebSocketGateway({
   cors: {
@@ -25,7 +29,9 @@ import { InjectRepository } from '@nestjs/typeorm';
   namespace: '/ws',
 })
 @Injectable()
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
+{
   @WebSocketServer()
   server: Server;
 
@@ -35,9 +41,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
     private readonly chatsService: ChatsService,
     private readonly messagesService: MessagesService,
+    private readonly ordersService: OrdersService,
+    private readonly webSocketService: WebSocketService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Message)
+    private readonly messageRepository: Repository<Message>,
   ) {}
+
+  afterInit(server: Server) {
+    this.webSocketService.setServer(server);
+    this.logger.log('WebSocket Gateway initialized and server registered');
+  }
 
   async handleConnection(client: Socket) {
     try {
@@ -94,38 +109,50 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleDisconnect(client: Socket) {
-    const token = client.handshake.auth.token as string;
-    const payload = await this.jwtService.verifyAsync(token);
-    const userUuid = payload.sub;
-    const user = await this.userRepository.findOne({
-      where: { uuid: userUuid },
-    });
-    const chats = await this.chatsService.findAll(userUuid, {
-      skip: 0,
-      take: 100,
-    });
-    for (const chat of chats) {
-      console.log(' leave from chat', chat.uuid);
-      await client.leave(`chat_${chat.uuid}`);
-    }
-    if (!user) {
-      this.logger.warn('User not found');
-      client.disconnect();
-      return;
-    }
-    user.isOnline = false;
-    user.lastOnlineAt = new Date();
-    await this.userRepository.save(user);
-    // Уведомляем об отключении
-    this.server.emit('user_online_status', {
-      userUuid: userUuid,
-      isOnline: false,
-      lastSeen: new Date().toISOString(),
-    });
+    try {
+      const token = client.handshake.auth.token as string;
+      if (!token) {
+        this.logger.warn('No token provided on disconnect');
+        return;
+      }
 
-    this.logger.log(`User ${userUuid} disconnected`);
-    client.disconnect();
-    return;
+      const payload = await this.jwtService.verifyAsync(token);
+      const userUuid = payload.sub;
+      const user = await this.userRepository.findOne({
+        where: { uuid: userUuid },
+      });
+
+      if (user) {
+        const chats = await this.chatsService.findAll(userUuid, {
+          skip: 0,
+          take: 100,
+        });
+        for (const chat of chats) {
+          console.log(' leave from chat', chat.uuid);
+          await client.leave(`chat_${chat.uuid}`);
+        }
+        user.isOnline = false;
+        user.lastOnlineAt = new Date();
+        await this.userRepository.save(user);
+        // Уведомляем об отключении
+        this.server.emit('user_online_status', {
+          userUuid: userUuid,
+          isOnline: false,
+          lastSeen: new Date().toISOString(),
+        });
+        this.logger.log(`User ${userUuid} disconnected`);
+      } else {
+        this.logger.warn('User not found on disconnect');
+      }
+    } catch (error) {
+      // Handle expired or invalid tokens gracefully during disconnect
+      this.logger.warn(
+        'Error during disconnect (token may be expired):',
+        error.message,
+      );
+    } finally {
+      client.disconnect();
+    }
   }
 
   @SubscribeMessage('message')
@@ -283,6 +310,65 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
     } catch (error) {
       this.logger.error('Message read error:', error);
+    }
+  }
+  @SubscribeMessage('order_processing')
+  async handleProcessingOrder(
+    @MessageBody()
+    data: {
+      offerMessageUuid: string;
+      orderAccepted: boolean;
+      chatUuid: string;
+      content: string;
+      clientUuid: string;
+      freelancerUuid: string;
+      price: number;
+      duration: number;
+    },
+  ) {
+    console.log('data', data);
+    try {
+      if (data.orderAccepted) {
+        await this.ordersService.create({
+          title: data.content,
+          clientUuid: data.clientUuid,
+          freelancerUuid: data.freelancerUuid,
+          price: data.price,
+
+          duration: data.duration,
+          status: 'active',
+          currency: 'USD',
+        });
+        await this.messagesService.update(data.offerMessageUuid, {
+          offerAccepted: data.orderAccepted,
+        });
+        const allOfferMessage = await this.messageRepository.find({
+          where: {
+            uuid: Not(data.offerMessageUuid),
+            type: 'offer',
+            chat: { uuid: data.chatUuid },
+            sender: { uuid: data.clientUuid },
+          },
+        });
+        for (const message of allOfferMessage) {
+          await this.messagesService.update(message.uuid, {
+            offerAccepted: false,
+          });
+        }
+      }
+
+      this.server.to(`chat_${data.chatUuid}`).emit('order_processing', {
+        clientUuid: data.clientUuid,
+        freelancerUuid: data.freelancerUuid,
+        offerMessageUuid: data.offerMessageUuid,
+        chatUuid: data.chatUuid,
+        price: data.price,
+        orderAccepted: data.orderAccepted,
+        duration: data.duration,
+        currency: 'USD',
+      });
+    } catch (error) {
+      this.logger.error('Order accepted error:', error);
     }
   }
 }

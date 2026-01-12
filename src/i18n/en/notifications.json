@@ -1,0 +1,10 @@
+{
+  "welcome-to-the-platform": {
+    "title": "Welcome to TimarLance",
+    "description": "Welcome to the platform for finding and completing tasks. Here you can find tasks and complete them for money. You can also create your own tasks and earn money by completing them."
+  },
+  "top-up-balance": {
+    "title": "Top-up balance",
+    "description": "Your balance has been topped up by {amount} rubles."
+  }
+}

@@ -47,7 +47,7 @@ export class CreateProjectDto {
   isDraft: boolean;
 
   @ValidateIf((o) => !o.isDraft)
-  @IsString()
+  @IsArray()
   @IsNotEmpty()
-  technologies?: string;
+  technologies?: string[];
 }

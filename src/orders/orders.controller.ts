@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Param } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Param, Get } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { ApiBearerAuth } from '@nestjs/swagger';
@@ -28,5 +28,18 @@ export class OrdersController {
     @CurrentUser() user: User,
   ): Promise<Order> {
     return await this.ordersService.accept(orderUuid, user.uuid);
+  }
+
+  @Get(':uuid')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('Bearer')
+  async findOne(@Param('uuid') uuid: string): Promise<Order> {
+    return await this.ordersService.findOne(uuid);
+  }
+  @Get()
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('Bearer')
+  async findAll(@CurrentUser() user: User): Promise<Order[]> {
+    return await this.ordersService.findAll(user.uuid);
   }
 }

@@ -5,12 +5,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Message } from './entities/message.entity';
 import { ChatsModule } from '../chats.module';
 import { MessageAttachement } from './entities/messageAttachement.entity';
+import { Order } from 'src/orders/entities/order.entity';
 import { StorageModule } from 'src/config/s3/s3.module';
 
 @Module({
   imports: [
     StorageModule,
-    TypeOrmModule.forFeature([Message, MessageAttachement]),
+    TypeOrmModule.forFeature([Message, MessageAttachement, Order]),
     forwardRef(() => ChatsModule),
   ],
   controllers: [MessagesController],

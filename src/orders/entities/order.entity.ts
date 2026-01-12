@@ -19,6 +19,9 @@ export class Order {
   @PrimaryGeneratedColumn('uuid')
   uuid: string;
 
+  @Column({ nullable: true })
+  title: string;
+
   @ManyToOne('User', 'orders')
   @JoinColumn({ name: 'client_uuid' })
   client: User;
@@ -31,7 +34,7 @@ export class Order {
   @JoinColumn({ name: 'respond_uuid' })
   respond: Respond;
 
-  @ManyToOne('Task', 'orders')
+  @ManyToOne('Task', 'orders', { nullable: true })
   @JoinColumn({ name: 'task_uuid' })
   task: Task;
 
@@ -45,7 +48,10 @@ export class Order {
   currency: string;
 
   @Column({ nullable: true, default: 'pending' })
-  status: 'pending' | 'active' | 'completed' | 'cancelled';
+  status: 'pending' | 'active' | 'completed' | 'cancelled' | 'in_review';
+
+  @Column({ nullable: true })
+  cancelledReason: string;
 
   @OneToMany('Review', 'order')
   reviews: Review[];

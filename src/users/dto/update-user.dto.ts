@@ -9,4 +9,5 @@ export class UpdateUserDto extends PickType(User, [
   'specialization',
   'cv',
   'phoneNumber',
+  'technologies',
 ] as const) {}

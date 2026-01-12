@@ -60,6 +60,10 @@ export class Message {
   @Column({ nullable: true })
   audioUrl: string;
 
+  @Column({ nullable: true, default: null })
+  @ApiProperty({ default: null })
+  offerAccepted: boolean;
+
   @Column({ nullable: true })
   audioDuration: number;
 

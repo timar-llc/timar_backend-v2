@@ -31,6 +31,8 @@ import { SetNewPasswordDto } from './dto/set-new-password.dto';
 import { SmsService } from 'src/config/sms/sms.service';
 import { LoginWithEmailDto } from './dto/login.dto';
 import { SocialAuthDto, SocialProvider } from './dto/social-auth.dto';
+import { AchievementsService } from 'src/achievements/achievements.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class AuthService {
@@ -40,6 +42,8 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly mailerService: MailerService,
     private readonly smsService: SmsService,
+    private readonly achievementsService: AchievementsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
   async login(loginDto: LoginDto): Promise<JwtResponseDto> {
     let user: User | null = null;
@@ -333,6 +337,8 @@ export class AuthService {
       emailConfirmed: true,
       passwordHash,
     });
+    await this.achievementsService.initUserAchievements(user.uuid);
+    await this.notificationsService.createInitNotification(user.uuid);
     return new StatusOkDto();
   }
 
@@ -355,6 +361,8 @@ export class AuthService {
       phoneNumber,
       passwordHash,
     });
+    await this.achievementsService.initUserAchievements(user.uuid);
+    await this.notificationsService.createInitNotification(user.uuid);
     return new StatusOkDto();
   }
 
@@ -416,6 +424,8 @@ export class AuthService {
         passwordHash: await bcrypt.hash(socialAuthDto.id, 10),
         avatarUrl: socialAuthDto.avatar,
       });
+      await this.achievementsService.initUserAchievements(user.uuid);
+    await this.notificationsService.createInitNotification(user.uuid);
     }
     const payload = { sub: user?.uuid, email: user?.email };
     const accessToken = await this.jwtService.signAsync(payload, {

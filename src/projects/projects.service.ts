@@ -77,7 +77,7 @@ export class ProjectsService {
   async findOne(uuid: string): Promise<Project> {
     return await this.projectRepository.findOneOrFail({
       where: { uuid },
-      relations: ['media', 'category'],
+      relations: ['media', 'category', 'user'],
     });
   }
 

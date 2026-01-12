@@ -81,6 +81,9 @@ export class Task {
 
   @Column({ nullable: true, name: 'ended_at' })
   endedAt: Date;
+
+  // Virtual field for respondes count (not stored in DB)
+  respondesCount?: number;
 }
 
 export class TaskWithPagination extends PaginationEntity {

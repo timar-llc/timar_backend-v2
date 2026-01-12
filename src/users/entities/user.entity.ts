@@ -7,6 +7,7 @@ import {
   IsUUID,
   IsOptional,
   IsDecimal,
+  IsArray,
 } from 'class-validator';
 import {
   Column,
@@ -28,8 +29,8 @@ import { Review } from 'src/reviews/entities/review.entity';
 import { Transaction } from 'src/payments/transactions/entities/transaction.entity';
 import { Message } from 'src/chats/messages/entities/message.entity';
 import { Chat } from 'src/chats/entities/chat.entity';
-import { PaymentMethod } from 'src/payments/payment-methods/entities/paymentMethod.entity';
-import { PayoutRequest } from 'src/payments/payout-requests/entities/payoutRequest.entity';
+import { Achievement } from 'src/achievements/entities/achievement.entity';
+import { Notification } from 'src/notifications/entities/notification.entity';
 
 @Entity('users')
 export class User {
@@ -42,6 +43,15 @@ export class User {
 
   @OneToMany('Task', 'user')
   tasks: Task[];
+
+  @OneToMany('Achievement', 'user')
+  achievements: Achievement[];
+
+  @OneToMany('Transaction', 'user')
+  transactions: Transaction[];
+
+  @OneToMany('Notification', 'user')
+  notifications: Notification[];
 
   @OneToMany('Respond', 'user')
   respondes: Respond[];
@@ -71,17 +81,8 @@ export class User {
   @OneToMany('Message', 'sender')
   messages: Message[];
 
-  @OneToMany('Transaction', 'user')
-  transactions: Transaction[];
-
   @OneToMany('Chat', 'user1')
   chats: Chat[];
-
-  @OneToMany('PaymentMethod', 'user')
-  paymentMethods: PaymentMethod[];
-
-  @OneToMany('PayoutRequest', 'user')
-  payoutRequests: PayoutRequest[];
 
   @Column({ unique: true, nullable: true })
   @IsEmail()
@@ -122,6 +123,11 @@ export class User {
   @IsString()
   @IsOptional()
   specialization: string;
+
+  @Column({ name: 'technologies', type: 'jsonb', nullable: true })
+  @IsArray()
+  @IsOptional()
+  technologies: string[];
 
   @Column({ name: 'cv', nullable: true })
   @IsString()
@@ -166,6 +172,33 @@ export class User {
   @Column({ name: 'google_id', nullable: true })
   googleId: string;
 
+  @Column({
+    name: 'total_balance',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  totalBalance: number;
+
+  @Column({
+    name: 'available_balance',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  availableBalance: number;
+
+  @Column({
+    name: 'pending_balance',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  pendingBalance: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -174,5 +207,16 @@ export class User {
 
   @Column({ name: 'last_online_at', nullable: true })
   lastOnlineAt: Date;
+}
 
+export class UserStats {
+  totalOrders: number;
+  completedOrders: number;
+  satisfiedClientsPercentage: number;
+  totalIncome: number;
+}
+
+export class UserWithStats {
+  user: User;
+  stats: UserStats;
 }
