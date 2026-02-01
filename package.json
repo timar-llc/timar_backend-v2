@@ -57,7 +57,7 @@
     "slugify": "^1.6.6",
     "socket.io": "^4.8.1",
     "typeorm": "^0.3.27",
-    "uuid": "^13.0.0",
+    "uuid": "8.3.2",
     "winston": "^3.17.0",
     "winston-logstash": "^1.2.1",
     "winston-logstash-transport": "^2.0.0"
@@ -75,6 +75,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
+    "@types/uuid": "8.3.4",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
