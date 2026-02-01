@@ -425,7 +425,7 @@ export class AuthService {
         avatarUrl: socialAuthDto.avatar,
       });
       await this.achievementsService.initUserAchievements(user.uuid);
-    await this.notificationsService.createInitNotification(user.uuid);
+      await this.notificationsService.createInitNotification(user.uuid);
     }
     const payload = { sub: user?.uuid, email: user?.email };
     const accessToken = await this.jwtService.signAsync(payload, {

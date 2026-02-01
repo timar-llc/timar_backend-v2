@@ -16,15 +16,15 @@ export class AchievementsService {
   ) {}
 
   async initUserAchievements(userUuid: string) {
-    if (
-      await this.achievementRepository.find({
-        where: {
-          user: {
-            uuid: userUuid,
-          },
+    console.log('initUserAchievements', userUuid);
+    const existingAchievements = await this.achievementRepository.find({
+      where: {
+        user: {
+          uuid: userUuid,
         },
-      })
-    ) {
+      },
+    });
+    if (existingAchievements.length > 0) {
       return;
     }
     const achievements = [

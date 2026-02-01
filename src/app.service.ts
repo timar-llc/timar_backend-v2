@@ -7,6 +7,7 @@ import { countries } from './common/seed/countries.seed';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { Category } from './common/entities/category.entity';
 import { categories, getByParent } from './common/seed/categories.seed';
+import { AchievementsService } from './achievements/achievements.service';
 
 @Injectable()
 export class AppService implements OnModuleInit {
@@ -17,6 +18,7 @@ export class AppService implements OnModuleInit {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    private readonly achievementsService: AchievementsService,
   ) {}
 
   async onModuleInit() {

@@ -104,14 +104,15 @@ export class NotificationsService {
   }
 
   async createInitNotification(userUuid: string) {
-    if (
-      await this.notificationRepository.find({
-        where: {
-          user: {
-            uuid: userUuid,
-          },
+    const existingNotifications = await this.notificationRepository.find({
+      where: {
+        user: {
+          uuid: userUuid,
         },
-      })
+      },
+    });
+    if (
+      existingNotifications.length > 0
     ) {
       return;
     }

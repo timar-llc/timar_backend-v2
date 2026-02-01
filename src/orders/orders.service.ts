@@ -7,6 +7,7 @@ import { MessagesService } from 'src/chats/messages/messages.service';
 import { RespondesService } from 'src/respondes/respondes.service';
 import { UsersService } from 'src/users/users.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class OrdersService {
@@ -59,9 +60,9 @@ export class OrdersService {
     }
     order.status = 'active';
     if (order.freelancer && order.freelancer.uuid !== userUuid) {
-      order.freelancer = user;
+      order.freelancer = user as User;
     } else {
-      order.client = user;
+      order.client = user as User;
     }
     return await this.orderRepository.save(order);
   }
@@ -94,5 +95,4 @@ export class OrdersService {
       relations: ['client', 'freelancer', 'task'],
     });
   }
-
 }
